@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0-alpha.1</Version>
+    <Authors>Smart.NET contributors</Authors>
+    <RepositoryUrl>https://github.com/smartdotnet/Smart.NET</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>decisions;provider-independent;dotnet</PackageTags>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+</Project>
