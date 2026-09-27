@@ -51,6 +51,35 @@ var smart = app.Services.GetRequiredService<ISmart>();
 var shouldReview = await smart.If(order, "Should this order be reviewed?");
 ```
 
+To use Jev through OpenRouter instead, set `OPENROUTER_API_KEY` in your
+environment and replace `AddSmartJev()` with:
+
+```csharp
+builder.Services.AddSmart();
+builder.Services.AddSmartJevOpenRouter();
+```
+
+This selects OpenRouter's System One endpoint and the `typesafe/jev-1.13`
+model. You can override the model or other settings through the options
+callback. See [OpenRouter configuration](docs/providers/jev.md#openrouter).
+
+An opt-in live test is available when you have an OpenRouter key:
+
+```powershell
+$env:OPENROUTER_API_KEY = "your-key"
+$env:SMART_OPENROUTER_INTEGRATION_TESTS = "true"
+dotnet test tests\Smart.NET.IntegrationTests\Smart.NET.IntegrationTests.csproj
+```
+
+This test makes a billable request. It is disabled unless explicitly enabled.
+For local configuration, copy the ignored
+`tests\Smart.NET.IntegrationTests\local.runsettings` template, add your key,
+set `SMART_OPENROUTER_INTEGRATION_TESTS` to `true`, and run:
+
+```powershell
+dotnet test tests\Smart.NET.IntegrationTests\Smart.NET.IntegrationTests.csproj --settings tests\Smart.NET.IntegrationTests\local.runsettings
+```
+
 For custom providers, register an `ISmartProvider` implementation in place of
 `AddSmartJev`. See [Jev provider configuration](docs/providers/jev.md).
 

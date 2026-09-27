@@ -52,6 +52,36 @@ public sealed class JevSmartProviderTests
     }
 
     [Fact]
+    public async Task OpenRouterUsesItsSystemOneEndpointAndAuthorizationKey()
+    {
+        var handler = new StubHandler((request, _) =>
+        {
+            Assert.Equal("https://openrouter.ai/api/v1/systemone", request.RequestUri!.AbsoluteUri);
+            Assert.Equal("Bearer openrouter-test-key", request.Headers.Authorization?.ToString());
+            return Task.FromResult(JsonResponse("""
+                {
+                  "id": "gen-dec-test",
+                  "model": "typesafe/jev-1.13-20260917",
+                  "provider": "TypeSafe",
+                  "answers": { "decision": { "type": "noul", "noul": 0.9 } },
+                  "usage": { "input_tokens": 1, "output_tokens": 1, "cost": 0.000001 }
+                }
+                """));
+        });
+        var client = new JevHttpClient(
+            new HttpClient(handler),
+            Options.Create(new JevOptions
+            {
+                ApiKey = "openrouter-test-key",
+                BaseUrl = "https://openrouter.ai/api",
+                Model = "typesafe/jev-1.13"
+            }));
+        var smart = new SmartService(new JevSmartProvider(client));
+
+        Assert.True(await smart.If("state", "Should this proceed?"));
+    }
+
+    [Fact]
     public async Task ChoiceMapsBackToStronglyTypedEnumAndKeepsConfidenceSeparate()
     {
         var handler = new StubHandler(async (request, cancellationToken) =>
@@ -197,6 +227,29 @@ public sealed class JevSmartProviderTests
 
         Assert.IsType<JevSmartProvider>(provider.GetRequiredService<ISmartProvider>());
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<ISmart>());
+    }
+
+    [Fact]
+    public void AddSmartJevOpenRouterUsesOpenRouterEnvironmentKeyAndSystemOneDefaults()
+    {
+        var previousKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+        Environment.SetEnvironmentVariable("OPENROUTER_API_KEY", "openrouter-test-key");
+
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddSmartJevOpenRouter();
+            using var provider = services.BuildServiceProvider();
+            var options = provider.GetRequiredService<IOptions<JevOptions>>().Value;
+
+            Assert.Equal("openrouter-test-key", options.ApiKey);
+            Assert.Equal("https://openrouter.ai/api", options.BaseUrl);
+            Assert.Equal("typesafe/jev-1.13", options.Model);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OPENROUTER_API_KEY", previousKey);
+        }
     }
 
     private static SmartService CreateSmart(HttpMessageHandler handler)

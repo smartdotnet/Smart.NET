@@ -6,3 +6,4 @@
 *.nupkg
 .vs/
 artifacts/
+tests/Smart.NET.IntegrationTests/local.runsettings

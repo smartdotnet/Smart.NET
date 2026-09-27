@@ -23,6 +23,48 @@ builder.Services.AddSmartJev(options =>
 `https://api.typesafe.ai`; the model defaults to `jev-latest`. No credentials
 are stored in source or included in logs.
 
+## OpenRouter
+
+To use an OpenRouter key, set `OPENROUTER_API_KEY` in the application's
+environment or secret store and register the provider with
+`AddSmartJevOpenRouter`:
+
+```csharp
+builder.Services.AddSmart();
+builder.Services.AddSmartJevOpenRouter();
+```
+
+The helper selects the OpenRouter System One base URL
+(`https://openrouter.ai/api`) and model (`typesafe/jev-1.13`). The existing
+adapter then posts to `/v1/systemone` with the OpenRouter key as a Bearer token.
+You may override the model using the options callback:
+
+```csharp
+builder.Services.AddSmartJevOpenRouter(options =>
+{
+    options.Model = "~typesafe/jev-latest";
+});
+```
+
+OpenRouter also exposes the Jev Decisions API at
+`https://openrouter.ai/api/alpha/decisions`; Smart.NET uses OpenRouter's
+System One API instead because it preserves the TypeSafe request and response
+contract already implemented by this adapter. Both surfaces use the same
+OpenRouter key. See the [official OpenRouter Jev guide](https://openrouter.ai/docs/guides/community/jev)
+and [System One SDK guide](https://openrouter.ai/docs/guides/community/typesafe-sdk).
+
+To run the live OpenRouter integration test, set `OPENROUTER_API_KEY` and
+explicitly enable it:
+
+```powershell
+$env:OPENROUTER_API_KEY = "your-key"
+$env:SMART_OPENROUTER_INTEGRATION_TESTS = "true"
+dotnet test tests\Smart.NET.IntegrationTests\Smart.NET.IntegrationTests.csproj
+```
+
+The test uses `typesafe/jev-1.13` by default; set `OPENROUTER_JEV_MODEL` to
+override it. This makes a real, billable request and is disabled by default.
+
 ## Operation mapping
 
 | Smart.NET | TypeSafe API | Mapping |
