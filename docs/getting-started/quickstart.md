@@ -9,7 +9,7 @@ Set `TYPESAFE_API_KEY` using your deployment's secret manager or environment,
 then register the core and provider:
 
 ```csharp
-using Smart.NET;
+using Smart.NET.Core;
 using Smart.NET.Jev;
 
 builder.Services.AddSmart();

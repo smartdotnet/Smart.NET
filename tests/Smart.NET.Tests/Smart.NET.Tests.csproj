@@ -12,6 +12,6 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Smart.NET\Smart.NET.csproj" />
+    <ProjectReference Include="..\..\src\Smart.NET.Core\Smart.NET.Core.csproj" />
   </ItemGroup>
 </Project>

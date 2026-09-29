@@ -1,6 +1,7 @@
 # Releasing Smart.NET
 
-All three libraries use the same SemVer version. The release tag is the
+All three packages (`Smart.NET.Core`, `Smart.NET.Abstractions`, and
+`Smart.NET.Jev`) use the same SemVer version. The release tag is the
 authoritative version source; `Directory.Build.props` supplies
 `0.1.0-alpha.1` only as the default for local development. A release tag such
 as `v0.1.0-alpha.2` is converted to package version `0.1.0-alpha.2` by CI.

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Smart.NET.Abstractions;
+using Smart.NET.Core;
 
 namespace Smart.NET.Tests;
 

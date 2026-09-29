@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Smart.NET.Abstractions", "src\Smart.NET.Abstractions\Smart.NET.Abstractions.csproj", "{1FB49217-70CE-4866-ACA1-EDBCDC2E5DC3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Smart.NET", "src\Smart.NET\Smart.NET.csproj", "{7447F17C-7629-4963-B9FE-4D2E6BBD2A1C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Smart.NET.Core", "src\Smart.NET.Core\Smart.NET.Core.csproj", "{7447F17C-7629-4963-B9FE-4D2E6BBD2A1C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject

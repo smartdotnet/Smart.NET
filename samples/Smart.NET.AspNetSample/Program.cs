@@ -1,4 +1,4 @@
-using Smart.NET;
+using Smart.NET.Core;
 using Smart.NET.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);

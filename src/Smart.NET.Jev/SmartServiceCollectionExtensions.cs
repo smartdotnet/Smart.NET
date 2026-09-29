@@ -8,7 +8,7 @@ public static class SmartServiceCollectionExtensions
 {
     /// <summary>
     /// Registers Jev as the smart provider. Call <c>AddSmart()</c> from the
-    /// Smart.NET package to register the provider-independent decision service.
+    /// Smart.NET.Core package to register the provider-independent decision service.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional Jev provider configuration.</param>
@@ -23,7 +23,7 @@ public static class SmartServiceCollectionExtensions
 
     /// <summary>
     /// Registers Jev through OpenRouter, using <c>OPENROUTER_API_KEY</c> by default.
-    /// Call <c>AddSmart()</c> from the Smart.NET package to register the core service.
+    /// Call <c>AddSmart()</c> from the Smart.NET.Core package to register the core service.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional settings that override the OpenRouter defaults.</param>

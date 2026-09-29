@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Smart.NET;
+using Smart.NET.Core;
 using Smart.NET.Abstractions;
 
 var services = new ServiceCollection();

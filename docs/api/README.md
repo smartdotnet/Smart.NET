@@ -1,6 +1,6 @@
 # API notes
 
-The public API lives in `Smart.NET` and the provider contract lives in
+The public API lives in `Smart.NET.Core` and the provider contract lives in
 `Smart.NET.Abstractions`.
 
 | API | Return | Behavior |

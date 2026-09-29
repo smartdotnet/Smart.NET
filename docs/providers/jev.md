@@ -6,7 +6,7 @@ the API documented at [docs.typesafe.ai](https://docs.typesafe.ai/).
 
 ## Registration
 
-Install `Smart.NET`, `Smart.NET.Abstractions`, and `Smart.NET.Jev`, then
+Install `Smart.NET.Core` and `Smart.NET.Jev`, then
 configure the API key from a secret store or environment variable:
 
 ```csharp
@@ -67,7 +67,7 @@ override it. This makes a real, billable request and is disabled by default.
 
 ## Operation mapping
 
-| Smart.NET | TypeSafe API | Mapping |
+| Smart.NET.Core | TypeSafe API | Mapping |
 | --- | --- | --- |
 | `If` and `Validate` | Noul | A probability in `[0, 1]`; Smart.NET uses `0.5` by default or the configured threshold. |
 | `Switch<T>` | Choice | Allowed serialized values are sent as Choice keys, then the selected key is mapped back to the original typed value. |

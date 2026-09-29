@@ -13,14 +13,14 @@ depend on a provider's model, HTTP API, or response format.
 ## Install
 
 ```sh
-dotnet add package Smart.NET --version 0.1.0-alpha.1
+dotnet add package Smart.NET.Core --version 0.1.0-alpha.1
 dotnet add package Smart.NET.Jev --version 0.1.0-alpha.1
 ```
 
 The current `0.1.0-alpha.1` packages are prerelease software. `Smart.NET.Jev`
-provides the Jev adapter; `Smart.NET` provides the injected decision service.
-Install `Smart.NET` alone and register your own `ISmartProvider`
-implementation to use a different provider.
+provides the Jev adapter; `Smart.NET.Core` provides the injected decision
+service. Install `Smart.NET.Core` alone and register your own
+`ISmartProvider` implementation to use a different provider.
 
 ## Example
 
@@ -29,7 +29,7 @@ manager, and use this `Program.cs`:
 
 ```csharp
 using Microsoft.AspNetCore.Builder;
-using Smart.NET;
+using Smart.NET.Core;
 using Smart.NET.Jev;
 
 var builder = WebApplication.CreateBuilder(args);

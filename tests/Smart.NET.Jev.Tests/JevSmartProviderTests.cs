@@ -2,7 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Smart.NET;
+using Smart.NET.Core;
 using Smart.NET.Abstractions;
 using Smart.NET.Jev;
 

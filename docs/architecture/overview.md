@@ -4,7 +4,7 @@
 
 ```text
 Application
-    ├── Smart.NET
+    ├── Smart.NET.Core
     │       └── Smart.NET.Abstractions
     └── optional provider package (for example, Smart.NET.Jev)
                 └── Smart.NET.Abstractions
@@ -12,7 +12,7 @@ Application
 
 - **Smart.NET.Abstractions** owns `ISmartProvider`, `SmartRequest`,
   `SmartDecision`, provider-neutral enums, and result/error contracts.
-- **Smart.NET** owns the injected `ISmart` API, request validation, context
+- **Smart.NET.Core** owns the injected `ISmart` API, request validation, context
   serialization, decision mapping, reliability policies, diagnostics, and
   dependency-injection registration.
 - **Smart.NET.Jev** will be an optional adapter. It may depend on the
