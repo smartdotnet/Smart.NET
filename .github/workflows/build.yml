@@ -12,9 +12,113 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
-      - run: dotnet restore Smart.NET.sln
-      - run: dotnet build Smart.NET.sln --configuration Release --no-restore
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+      - name: Pack
+        run: dotnet pack --configuration Release --no-build --no-restore
+      - name: Inspect packages
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob
+          import sys
+          import xml.etree.ElementTree as ET
+          import zipfile
+
+          expected = {
+              "Smart.NET": {
+                  "target": "net10.0",
+                  "dependencies": {
+                      "Smart.NET.Abstractions",
+                      "Microsoft.Extensions.DependencyInjection.Abstractions",
+                      "Microsoft.Extensions.Logging.Abstractions",
+                  },
+              },
+              "Smart.NET.Abstractions": {"target": "net10.0", "dependencies": set()},
+              "Smart.NET.Jev": {
+                  "target": "net10.0",
+                  "dependencies": {"Smart.NET.Abstractions", "Microsoft.Extensions.Http"},
+              },
+          }
+          versions = set()
+          commits = set()
+          packages = glob.glob("artifacts/*.nupkg")
+          if len(packages) != len(expected):
+              sys.exit(f"Expected {len(expected)} NuGet packages, found {len(packages)}: {packages}")
+
+          for package in packages:
+              with zipfile.ZipFile(package) as archive:
+                  names = archive.namelist()
+                  nuspecs = [name for name in names if name.endswith(".nuspec")]
+                  if len(nuspecs) != 1:
+                      sys.exit(f"{package}: expected one .nuspec, found {nuspecs}")
+                  root = ET.fromstring(archive.read(nuspecs[0]))
+                  metadata = root.find("./{*}metadata")
+                  package_id = metadata.findtext("{*}id")
+                  if package_id not in expected:
+                      sys.exit(f"{package}: unexpected package ID {package_id}")
+                  expected_package = expected.pop(package_id)
+                  version = metadata.findtext("{*}version")
+                  if not version:
+                      sys.exit(f"{package}: missing package version")
+                  versions.add(version)
+                  dependencies = {
+                      item.get("id")
+                      for item in metadata.findall(".//{*}dependency")
+                  }
+                  if dependencies != expected_package["dependencies"]:
+                      sys.exit(f"{package}: unexpected dependencies {sorted(dependencies)}")
+                  if metadata.findtext("{*}license") != "MIT":
+                      sys.exit(f"{package}: missing MIT license metadata")
+                  repository = metadata.find("{*}repository")
+                  if (repository is None
+                          or repository.get("url") != "https://github.com/smartdotnet/Smart.NET"
+                          or not repository.get("commit")):
+                      sys.exit(f"{package}: missing Smart.NET repository metadata")
+                  commits.add(repository.get("commit"))
+                  for required in ("README.md", "LICENSE", f"lib/{expected_package['target']}/"):
+                      if required.endswith("/"):
+                          if not any(name.startswith(required) and name.endswith(".dll") for name in names):
+                              sys.exit(f"{package}: missing library assembly under {required}")
+                      elif required not in names:
+                          sys.exit(f"{package}: missing {required}")
+                  if any(name.endswith(".pdb") for name in names):
+                      sys.exit(f"{package}: PDB files belong in the symbol package, not the main package")
+                  if any(name.startswith((".git/", "bin/", "obj/")) for name in names):
+                      sys.exit(f"{package}: contains development or git files")
+
+          if expected:
+              sys.exit(f"Missing packages: {sorted(expected)}")
+          if len(versions) != 1:
+              sys.exit(f"Packages do not share one version: {sorted(versions)}")
+          if len(commits) != 1:
+              sys.exit(f"Packages do not share one repository commit: {sorted(commits)}")
+
+          symbols = glob.glob("artifacts/*.snupkg")
+          if len(symbols) != 3:
+              sys.exit(f"Expected 3 symbol packages, found {len(symbols)}: {symbols}")
+          for package in symbols:
+              with zipfile.ZipFile(package) as archive:
+                  pdbs = [name for name in archive.namelist() if name.endswith(".pdb")]
+                  if not pdbs:
+                      sys.exit(f"{package}: contains no PDB symbols")
+                  source_link = f"raw.githubusercontent.com/smartdotnet/Smart.NET/{next(iter(commits))}/".encode()
+                  if not any(source_link in archive.read(name) for name in pdbs):
+                      sys.exit(f"{package}: PDB contains no Source Link mapping for the package commit")
+          PY
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: Smart.NET-packages
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error

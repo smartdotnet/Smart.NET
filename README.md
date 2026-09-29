@@ -1,18 +1,50 @@
 # Smart.NET
 
+[![Build](https://github.com/smartdotnet/Smart.NET/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/smartdotnet/Smart.NET/actions/workflows/build.yml)
+
 **A provider-independent decision layer for .NET.**
 
-Ask a decision question using familiar C# primitives:
+Smart.NET exposes typed decision operations through `ISmart` and an
+`ISmartProvider` contract. The core includes Boolean decisions, typed choices,
+bounded scores, validation, timeout and cancellation support, and opt-in
+fallbacks. Provider integrations are separate packages; the core does not
+depend on a provider's model, HTTP API, or response format.
 
-```csharp
-if (await smart.If(order, "Should this order be reviewed?"))
-{
-    SendToReview(order);
-}
+## Install
+
+```sh
+dotnet add package Smart.NET --version 0.1.0-alpha.1
+dotnet add package Smart.NET.Jev --version 0.1.0-alpha.1
 ```
 
-Use the same injected `ISmart` service for typed choices, scores, and
-validation:
+The current `0.1.0-alpha.1` packages are prerelease software. `Smart.NET.Jev`
+provides the Jev adapter; `Smart.NET` provides the injected decision service.
+Install `Smart.NET` alone and register your own `ISmartProvider`
+implementation to use a different provider.
+
+## Example
+
+Create a web project, set `TYPESAFE_API_KEY` in its environment or secret
+manager, and use this `Program.cs`:
+
+```csharp
+using Microsoft.AspNetCore.Builder;
+using Smart.NET;
+using Smart.NET.Jev;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSmart();
+builder.Services.AddSmartJev();
+
+var app = builder.Build();
+app.MapGet("/orders/{id:int}/review", async (int id, ISmart smart) =>
+    await smart.If(new { OrderId = id }, "Should this order be reviewed?"));
+app.Run();
+```
+
+Start the application and request `/orders/42/review` to run the example.
+
+The same `ISmart` service supports typed choices, scores, and validation:
 
 ```csharp
 var action = await smart.Switch(
@@ -21,122 +53,24 @@ var action = await smart.Switch(
     TradingAction.Buy,
     TradingAction.Hold,
     TradingAction.Sell);
-
 var strength = await smart.Score(signal, "How strong is this signal?", 0, 100);
 var isConsistent = await smart.Validate(trade, "Is this trade internally consistent?");
 ```
 
-Smart.NET defines provider-independent operations and contracts. Applications
-depend on `ISmart`, not on a provider's model, HTTP API, or response format.
+## Provider independence and safety
 
-## Status
-
-This repository is an early `0.1.0-alpha.1` implementation. It includes the
-provider-neutral core, an in-memory sample provider, and a Jev adapter built
-against the current official API. The public API remains provider-independent.
-
-## Getting started
-
-Install `Smart.NET`, `Smart.NET.Abstractions`, and the provider package you
-want to use. For Jev:
-
-```csharp
-using Smart.NET;
-using Smart.NET.Jev;
-
-builder.Services.AddSmart();
-builder.Services.AddSmartJev();
-
-var smart = app.Services.GetRequiredService<ISmart>();
-var shouldReview = await smart.If(order, "Should this order be reviewed?");
-```
-
-To use Jev through OpenRouter instead, set `OPENROUTER_API_KEY` in your
-environment and replace `AddSmartJev()` with:
-
-```csharp
-builder.Services.AddSmart();
-builder.Services.AddSmartJevOpenRouter();
-```
-
-This selects OpenRouter's System One endpoint and the `typesafe/jev-1.13`
-model. You can override the model or other settings through the options
-callback. See [OpenRouter configuration](docs/providers/jev.md#openrouter).
-
-An opt-in live test is available when you have an OpenRouter key:
-
-```powershell
-$env:OPENROUTER_API_KEY = "your-key"
-$env:SMART_OPENROUTER_INTEGRATION_TESTS = "true"
-dotnet test tests\Smart.NET.IntegrationTests\Smart.NET.IntegrationTests.csproj
-```
-
-This test makes a billable request. It is disabled unless explicitly enabled.
-For local configuration, copy the ignored
-`tests\Smart.NET.IntegrationTests\local.runsettings` template, add your key,
-set `SMART_OPENROUTER_INTEGRATION_TESTS` to `true`, and run:
-
-```powershell
-dotnet test tests\Smart.NET.IntegrationTests\Smart.NET.IntegrationTests.csproj --settings tests\Smart.NET.IntegrationTests\local.runsettings
-```
-
-For custom providers, register an `ISmartProvider` implementation in place of
-`AddSmartJev`. See [Jev provider configuration](docs/providers/jev.md).
-
-The package IDs are `Smart.NET`, `Smart.NET.Abstractions`, and `Smart.NET.Jev`.
-Packages are not published yet; project references are used in this repository.
-Once published, install them with:
-
-```powershell
-dotnet add package Smart.NET --version 0.1.0-alpha.1
-dotnet add package Smart.NET.Jev --version 0.1.0-alpha.1
-```
-
-The console sample uses a deterministic local provider and runs without network
-access:
-
-```powershell
-dotnet run --project samples\Smart.NET.ConsoleSample
-```
-
-The ASP.NET Core sample demonstrates resolving `ISmart` through request-scoped
-dependency injection; its in-memory provider is educational, not a production
-decision engine:
-
-```powershell
-dotnet run --project samples\Smart.NET.AspNetSample
-```
-
-## Decisions, reliability, and safety
-
-- Boolean decisions use an explicit Boolean value when the provider returns
-  one. For probability-only providers, Smart.NET uses a documented default
-  threshold of `0.5`, configurable with `options.WithThreshold(0.85)`.
-- Scores are bounded values, not implicitly calibrated probabilities.
-- `Switch` sends the allowed choice set and rejects a response that is not an
-  exact allowed value. The returned value retains its original .NET type,
-  including enum types.
-- Fallbacks are opt-in. Use `IfResult`, `SwitchResult`, `ScoreResult`, or
-  `ValidateResult` to inspect `UsedFallback`, provider, probability, and
-  latency.
-- Timeouts and cancellation are supported. Retries are disabled by default and
-  apply only to provider failures explicitly marked transient.
-- Application context is serialized to JSON before being passed to a provider.
-  It may contain sensitive or user-controlled data: minimise it, redact it
-  before calling Smart.NET, and treat it as untrusted input. The core does not
-  log request context or credentials.
-- Smart.NET makes decisions; it is not an authorization system or a
+- Applications use `ISmart`; provider adapters implement `ISmartProvider` and
+  can be changed independently of decision-handling code.
+- Choices are restricted to the supplied allowed values. Scores are bounded,
+  not implicitly calibrated probabilities. Fallbacks are opt-in.
+- Context is serialized to JSON and may be sent to an external provider.
+  Minimise and redact sensitive data before sending it.
+- Smart.NET suggests decisions; it is not an authorization system or a
   deterministic risk control. Keep hard safety, compliance, and execution
   constraints in application logic.
 
-## Development
-
-```powershell
-dotnet test Smart.NET.sln
-dotnet pack src\Smart.NET.Abstractions\Smart.NET.Abstractions.csproj --configuration Release --output artifacts
-dotnet pack src\Smart.NET\Smart.NET.csproj --configuration Release --output artifacts
-dotnet pack src\Smart.NET.Jev\Smart.NET.Jev.csproj --configuration Release --output artifacts
-```
-
-Packages use semantic versioning and prerelease versions until the public API
-is reviewed. See [the architecture and API review](docs/architecture/overview.md).
+See the [quickstart](https://github.com/smartdotnet/Smart.NET/blob/master/docs/getting-started/quickstart.md),
+[Jev provider guide](https://github.com/smartdotnet/Smart.NET/blob/master/docs/providers/jev.md),
+and [release instructions](https://github.com/smartdotnet/Smart.NET/blob/master/docs/releasing.md).
+Source code and issue tracking are on
+[GitHub](https://github.com/smartdotnet/Smart.NET).

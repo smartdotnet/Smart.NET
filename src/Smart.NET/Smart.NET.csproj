@@ -10,10 +10,11 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <PropertyGroup>
+    <PackageId>Smart.NET</PackageId>
+    <Title>Smart.NET</Title>
     <Description>Provider-independent intelligent decision primitives for .NET.</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/smartdotnet/Smart.NET</PackageProjectUrl>
     <PackageReleaseNotes>Initial provider-independent decision primitives.</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
