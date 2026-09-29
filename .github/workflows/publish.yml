@@ -1,0 +1,146 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Validate release tag
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?$'
+          if [[ ! "$version" =~ $semver ]]; then
+            echo "Tag '$RELEASE_TAG' is not a valid SemVer version with a v prefix." >&2
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+      - name: Pack
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.value }}
+        run: dotnet pack --configuration Release --no-build --no-restore -p:PackageVersion="$PACKAGE_VERSION"
+      - name: Inspect packages
+        shell: bash
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+          import zipfile
+
+          version = os.environ["PACKAGE_VERSION"]
+          expected = {
+              "Smart.NET": {
+                  "target": "net10.0",
+                  "dependencies": {
+                      "Smart.NET.Abstractions",
+                      "Microsoft.Extensions.DependencyInjection.Abstractions",
+                      "Microsoft.Extensions.Logging.Abstractions",
+                  },
+              },
+              "Smart.NET.Abstractions": {"target": "net10.0", "dependencies": set()},
+              "Smart.NET.Jev": {
+                  "target": "net10.0",
+                  "dependencies": {"Smart.NET.Abstractions", "Microsoft.Extensions.Http"},
+              },
+          }
+          commits = set()
+          packages = glob.glob("artifacts/*.nupkg")
+          if len(packages) != len(expected):
+              sys.exit(f"Expected {len(expected)} NuGet packages, found {len(packages)}: {packages}")
+
+          for package in packages:
+              with zipfile.ZipFile(package) as archive:
+                  names = archive.namelist()
+                  nuspecs = [name for name in names if name.endswith(".nuspec")]
+                  if len(nuspecs) != 1:
+                      sys.exit(f"{package}: expected one .nuspec, found {nuspecs}")
+                  root = ET.fromstring(archive.read(nuspecs[0]))
+                  metadata = root.find("./{*}metadata")
+                  package_id = metadata.findtext("{*}id")
+                  if package_id not in expected:
+                      sys.exit(f"{package}: unexpected package ID {package_id}")
+                  if metadata.findtext("{*}version") != version:
+                      sys.exit(f"{package}: package version does not match tag {version}")
+                  expected_package = expected.pop(package_id)
+                  dependencies = {
+                      item.get("id")
+                      for item in metadata.findall(".//{*}dependency")
+                  }
+                  if dependencies != expected_package["dependencies"]:
+                      sys.exit(f"{package}: unexpected dependencies {sorted(dependencies)}")
+                  if metadata.findtext("{*}license") != "MIT":
+                      sys.exit(f"{package}: missing MIT license metadata")
+                  repository = metadata.find("{*}repository")
+                  if (repository is None
+                          or repository.get("url") != "https://github.com/smartdotnet/Smart.NET"
+                          or not repository.get("commit")):
+                      sys.exit(f"{package}: missing Smart.NET repository metadata")
+                  commits.add(repository.get("commit"))
+                  for required in ("README.md", "LICENSE"):
+                      if required not in names:
+                          sys.exit(f"{package}: missing {required}")
+                  if not any(name.startswith(f"lib/{expected_package['target']}/") and name.endswith(".dll") for name in names):
+                      sys.exit(f"{package}: missing library assembly under lib/{expected_package['target']}/")
+                  if any(name.endswith(".pdb") for name in names):
+                      sys.exit(f"{package}: PDB files belong in the symbol package, not the main package")
+                  if any(name.startswith((".git/", "bin/", "obj/")) for name in names):
+                      sys.exit(f"{package}: contains development or git files")
+
+          if expected:
+              sys.exit(f"Missing packages: {sorted(expected)}")
+          if len(commits) != 1:
+              sys.exit(f"Packages do not share one repository commit: {sorted(commits)}")
+
+          symbols = glob.glob("artifacts/*.snupkg")
+          if len(symbols) != 3:
+              sys.exit(f"Expected 3 symbol packages, found {len(symbols)}: {symbols}")
+          for package in symbols:
+              with zipfile.ZipFile(package) as archive:
+                  pdbs = [name for name in archive.namelist() if name.endswith(".pdb")]
+                  if not pdbs:
+                      sys.exit(f"{package}: contains no PDB symbols")
+                  source_link = f"raw.githubusercontent.com/smartdotnet/Smart.NET/{next(iter(commits))}/".encode()
+                  if not any(source_link in archive.read(name) for name in pdbs):
+                      sys.exit(f"{package}: PDB contains no Source Link mapping for the package commit")
+          PY
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Push packages
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push artifacts/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
